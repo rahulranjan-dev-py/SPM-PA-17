@@ -1,0 +1,92 @@
+name: Release
+
+# Builds the desktop installers on GitHub runners and publishes them to a
+# GitHub Release. Trigger by pushing a tag `vX.Y.Z` or manually with the tag
+# name (the tag must already exist).
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release (e.g. v10.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            label: Windows (NSIS + MSI, x64)
+            args: ""
+          - platform: ubuntu-22.04
+            label: Linux (deb, rpm, AppImage)
+            args: ""
+          - platform: macos-latest
+            label: macOS (Apple Silicon)
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-latest
+            label: macOS (Intel)
+            args: "--target x86_64-apple-darwin"
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux prerequisites
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev patchelf pkg-config build-essential
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Build and publish installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ inputs.tag || github.ref_name }}
+          releaseName: "HandToHand X ${{ inputs.tag || github.ref_name }}"
+          releaseBody: |
+            HandToHand X — offline-first Sub Office hand-to-hand cash register, chest tally and SMR (PA-17) batch engine. Replaces "HandToHand V9.1 with SMR for all SO".
+
+            **Installers**
+            - Windows 10/11: `.exe` (NSIS, recommended) or `.msi`. WebView2 is bootstrapped by the installer if missing.
+            - Linux: `.deb`, `.rpm` or `.AppImage`.
+            - macOS: `.dmg` (unsigned; right-click → Open on first launch).
+
+            **First run:** sign in as `spm` with PIN `1234`; the app requires a PIN change before use. Add Sub Offices and operators under *Offices & Settings*.
+
+            **Highlights**
+            - Voucher ledger per counter (Savings Bank, Mails & Parcels, Remittances, PLI/RPLI) with SAP reference, barcode IDs and Pending / Accepted / Rejected verification
+            - Live denomination dock (₹500 … ₹1, mixed coins, cash items) with Balanced / Surplus / Deficit comparator against the Finacle / SAP figure
+            - `F2` calculator, `F3` voucher, `F5` recalculate, `F9` tally, `F10` closing sheet; global USB barcode-wedge detection with UPU S10 validation
+            - SMR Hub: one-click PA-17 compilation for every Sub Office, cash-limit violation log, stamp & stationery stock, SPM sign-off, PDF / Excel / CSV export
+            - SQLite in WAL mode, verified snapshot backups on every close, restore with safety copy, immutable audit trail, operator vs supervisor tiers
+            - ESC/POS and plain-text RAW printing to slip / dot-matrix printers; native A4 print and vector PDF
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
