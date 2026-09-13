@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --font-sans: "Inter", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  --background: oklch(0.985 0.004 250);
+  --foreground: oklch(0.2 0.02 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 255);
+  --muted: oklch(0.955 0.006 250);
+  --muted-foreground: oklch(0.5 0.02 255);
+  --border: oklch(0.9 0.008 250);
+  --input: oklch(0.92 0.008 250);
+  --ring: oklch(0.55 0.16 255);
+  --primary: oklch(0.5 0.17 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.94 0.02 255);
+  --accent-foreground: oklch(0.25 0.03 255);
+  --success: oklch(0.6 0.16 150);
+  --success-foreground: oklch(0.99 0 0);
+  --warning: oklch(0.75 0.16 75);
+  --warning-foreground: oklch(0.2 0.03 75);
+  --danger: oklch(0.58 0.2 25);
+  --danger-foreground: oklch(0.99 0 0);
+  --sidebar: oklch(0.965 0.006 250);
+  --topbar: oklch(1 0 0);
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: oklch(0.19 0.012 255);
+  --foreground: oklch(0.9 0.008 250);
+  --card: oklch(0.23 0.012 255);
+  --card-foreground: oklch(0.9 0.008 250);
+  --muted: oklch(0.27 0.012 255);
+  --muted-foreground: oklch(0.68 0.012 250);
+  --border: oklch(0.31 0.012 255);
+  --input: oklch(0.3 0.012 255);
+  --ring: oklch(0.7 0.12 255);
+  --primary: oklch(0.72 0.13 255);
+  --primary-foreground: oklch(0.16 0.02 255);
+  --accent: oklch(0.3 0.03 255);
+  --accent-foreground: oklch(0.92 0.01 255);
+  --success: oklch(0.7 0.14 150);
+  --success-foreground: oklch(0.15 0.03 150);
+  --warning: oklch(0.8 0.14 80);
+  --warning-foreground: oklch(0.2 0.03 80);
+  --danger: oklch(0.68 0.17 25);
+  --danger-foreground: oklch(0.15 0.03 25);
+  --sidebar: oklch(0.21 0.012 255);
+  --topbar: oklch(0.22 0.012 255);
+}
+
+@theme inline {
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-topbar: var(--topbar);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * { @apply border-border; }
+  html, body, #root { height: 100%; }
+  body {
+    @apply bg-background text-foreground font-sans antialiased text-[13.5px] leading-snug;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    overflow: hidden;
+  }
+  ::selection { background: color-mix(in oklch, var(--primary) 30%, transparent); }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  *:focus-visible { @apply outline-none ring-2 ring-ring ring-offset-1 ring-offset-background; }
+  .num { @apply font-mono tabular-nums; }
+  .scrollbar-thin::-webkit-scrollbar { width: 8px; height: 8px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: color-mix(in oklch, var(--foreground) 18%, transparent); border-radius: 8px; }
+}
+
+@media print {
+  body { overflow: visible; background: white; color: black; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+  @page { size: A4 landscape; margin: 10mm; }
+}
+.print-only { display: none; }
