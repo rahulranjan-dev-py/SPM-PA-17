@@ -1,17 +1,24 @@
 name: Release
 
 # Builds the desktop installers on GitHub runners and publishes them to a
-# GitHub Release. Trigger by pushing a tag `vX.Y.Z` or manually with the tag
-# name (the tag must already exist).
+# GitHub Release, then bundles every asset into one zip with an install guide,
+# adds SHA-256 checksums and writes the release notes. Trigger by pushing a tag
+# `vX.Y.Z`, or manually with a tag name (untick "rebuild" to only refresh the
+# zip, checksums and notes of an existing release).
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to release (e.g. v10.0.0)"
+        description: "Tag to release (e.g. v10.0.0); created if it does not exist"
         required: true
         type: string
+      rebuild:
+        description: "Rebuild the installers (uncheck to only refresh the bundle zip, checksums and release notes)"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -22,6 +29,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.label }}
+    if: ${{ github.event_name != 'workflow_dispatch' || inputs.rebuild }}
     strategy:
       fail-fast: false
       matrix:
@@ -90,3 +98,44 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  publish:
+    name: Bundle zip, checksums and release notes
+    needs: build
+    if: ${{ always() && !cancelled() && (needs.build.result == 'success' || needs.build.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download the installers from the release
+        run: |
+          mkdir -p bundle
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir bundle
+          rm -f bundle/*.zip bundle/SHA256SUMS.txt bundle/INSTALL.md
+          ls -l bundle
+
+      - name: Render the install guide and release notes
+        run: |
+          VERSION="${TAG#v}"
+          sed -e "s/{{TAG}}/$TAG/g" -e "s/{{VERSION}}/$VERSION/g" .github/release/INSTALL.md > INSTALL.md
+          cp INSTALL.md bundle/INSTALL.md
+          {
+            echo "Download **one** file for your platform, or the all-platforms zip for offline distribution. Full guide: \`INSTALL.md\` (also inside the zip)."
+            echo
+            cat INSTALL.md
+          } > notes.md
+
+      - name: Create the all-platforms zip and checksums
+        run: |
+          ZIP="HandToHand-X-$TAG-all-platforms.zip"
+          (cd bundle && zip -r -9 "../$ZIP" .)
+          { sha256sum "$ZIP"; (cd bundle && sha256sum *); } > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload bundle, checksums and guide; update the release notes
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber "HandToHand-X-$TAG-all-platforms.zip" SHA256SUMS.txt INSTALL.md
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --title "HandToHand X $TAG" --notes-file notes.md
