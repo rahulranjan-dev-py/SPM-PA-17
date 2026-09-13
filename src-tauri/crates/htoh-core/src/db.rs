@@ -137,6 +137,7 @@ impl Database {
     }
 
     // ------------------------------------------------------------------ audit
+    #[allow(clippy::too_many_arguments)]
     fn audit_tx<B: Serialize, A: Serialize>(
         tx: &Transaction,
         actor: &Actor,
@@ -1493,6 +1494,7 @@ impl Database {
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn save_stamp_stock(
         &self,
         actor: &Actor,
